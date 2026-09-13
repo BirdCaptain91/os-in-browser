@@ -176,26 +176,44 @@ jobs:
 
           Get-AudioDevice -Playback
 
-      - name: Install Electron binary
+      - name: Resolve latest release tag
+        id: release
         run: |
+          TAG="$(gh release view \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName \
+            --jq .tagName 2>/dev/null \
+          || gh release view \
+            --repo "kingdudely/os-in-browser" \
+            --json tagName \
+            --jq .tagName)"
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Electron binary
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+
           case "$RUNNER_OS" in
             Linux)
-              ZIP_NAME="os-in-browser-linux-x64-1.0.0.zip"
+              ZIP_NAME="os-in-browser-linux-x64-${VERSION}.zip"
               ;;
 
             Windows)
-              ZIP_NAME="os-in-browser-win32-x64-1.0.0.zip"
+              ZIP_NAME="os-in-browser-win32-x64-${VERSION}.zip"
               ;;
 
             macOS)
-              ZIP_NAME="os-in-browser-darwin-arm64-1.0.0.zip"
+              ZIP_NAME="os-in-browser-darwin-arm64-${VERSION}.zip"
               ;;
           esac
 
-          gh release download \
+          gh release download "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --pattern "$ZIP_NAME" \
-          || gh release download \
+          || gh release download "$RELEASE_TAG" \
             --repo "kingdudely/os-in-browser" \
             --pattern "$ZIP_NAME"
 
